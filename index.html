@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <!-- 移动端优先：宽度跟随设备，初始缩放 1，禁止横向滚动 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="你的社交本能是什么动物？一场关于社交本能的趣味小测试，16 道单选题，全程本地计算，保护隐私。" />
+  <title>你的社交本能是什么动物？｜趣味社交人格测评</title>
+  <!-- ============================================================
+       样式区（CSS）
+       设计风格：柔和治愈、简约留白、移动端优先、flex 弹性响应式
+       说明：修改下方 CSS 变量（:root）即可一键换主题色
+       ============================================================ -->
+  <style>
+    /* ---------- 设计令牌：主题色 / 圆角 / 阴影，方便二次修改 ---------- */
+    :root {
+      --color-bg: #f7f2eb;               /* 页面底色：暖米白 */
+      --color-card: #fffdf9;             /* 卡片底色：奶白 */
+      --color-primary: #86a78b;          /* 主色：鼠尾草绿 */
+      --color-primary-deep: #6d8f73;     /* 主色加深：按钮渐变末端 */
+      --color-primary-soft: #eef4ee;     /* 主色浅底：选中态背景 */
+      --color-accent: #e3b7ad;           /* 点缀色：暖粉陶土 */
+      --color-text: #514d47;             /* 正文文字：暖灰棕 */
+      --color-text-muted: #9c958a;       /* 次要文字 */
+      --color-border: #ece5da;           /* 描边色 */
+      --radius-lg: 22px;                 /* 大卡片圆角 */
+      --radius-md: 14px;                 /* 选项/小卡片圆角 */
+      --shadow-card: 0 12px 32px rgba(112, 101, 82, 0.10); /* 柔和投影 */
+    }
+    /* ---------- 基础重置 ---------- */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    html {
+      -webkit-text-size-adjust: 100%; /* 避免 iOS 横屏时字号自动放大 */
+    }
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 24px 16px 40px;
+      color: var(--color-text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+        "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      font-size: 16px;
+      line-height: 1.75;
+      /* 柔和渐变背景：米白 → 淡绿 → 淡粉，营造治愈感 */
+      background: linear-gradient(160deg, #f8f3ec 0%, #edf3ee 55%, #f6ecec 100%);
+      background-attachment: fixed;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* ---------- 布局容器：移动端默认满宽，桌面端居中收窄为卡片列 ---------- */
+    .app {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+    }
+    /* ---------- 通用卡片 ---------- */
+    .card {
+      background: var(--color-card);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      padding: 30px 22px;
+    }
+    /* ---------- 三个页面（首页 / 答题页 / 结果页）的切换 ---------- */
+    .page {
+      display: none; /* 默认隐藏，由 JS 加上 page--active 显示 */
+    }
+    .page--active {
+      display: block;
+      animation: pageIn 0.4s ease both; /* 入场淡入上移 */
+    }
+    @keyframes pageIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    /* ---------- 通用按钮 ---------- */
+    .btn {
+      appearance: none;
+      border: none;
+      border-radius: 999px;
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      min-height: 50px;
+      padding: 0 24px;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn:active { transform: scale(0.98); } /* 点按反馈 */
+    .btn--primary {
+      color: #fff;
+      background: linear-gradient(135deg, var(--color-primary), var(--color-primary-deep));
+      box-shadow: 0 8px 18px rgba(109, 143, 115, 0.28);
+    }
+    .btn--primary:hover { box-shadow: 0 10px 22px rgba(109, 143, 115, 0.36); }
+    .btn--ghost {
+      color: var(--color-primary-deep);
+      background: #fff;
+      border: 1.5px solid var(--color-primary);
+    }
+    .btn--block { width: 100%; }
+    .btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    /* ---------- 首页 ---------- */
+    .intro-card {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .intro-badge {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 34px;
+      margin-bottom: 18px;
+      background: var(--color-primary-soft);
+    }
+    .intro-eyebrow {
+      font-size: 13px;
+      color: var(--color-primary-deep);
+      letter-spacing: 0.12em;
+      margin-bottom: 10px;
+    }
+    .intro-title {
+      font-size: 26px;
+      line-height: 1.4;
+      font-weight: 700;
+      margin-bottom: 18px;
+    }
+    .intro-text {
+      font-size: 15px;
+      color: #6b655c;
+      text-align: left;
+      white-space: pre-line; /* 保留 JS/HTML 中的换行节奏 */
+      margin-bottom: 22px;
+    }
+    .privacy-note {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 18px;
+      font-size: 12.5px;
+      color: var(--color-text-muted);
+    }
+    /* ---------- 免责声明小字 ---------- */
+    .disclaimer {
+      margin-top: 18px;
+      font-size: 12px;
+      line-height: 1.7;
+      color: var(--color-text-muted);
+      text-align: center;
+    }
+    /* ---------- 答题页：进度条 ---------- */
+    .progress-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--color-text-muted);
+      margin-bottom: 10px;
+    }
+    .progress-count {
+      font-weight: 600;
+      color: var(--color-primary-deep);
+      font-variant-numeric: tabular-nums;
+    }
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      background: #eee8dd;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      width: 0; /* 宽度由 JS 按已作答题数实时设置 */
+      border-radius: 999px;
+      background: linear-gradient(90deg, #a3c3a6, var(--color-primary-deep));
+      transition: width 0.3s ease;
+    }
+    /* ---------- 答题页：题干与选项 ---------- */
+    .question--enter {
+      animation: questionIn 0.3s ease both;
+    }
+    @keyframes questionIn {
+      from { opacity: 0; transform: translateX(14px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .question-no {
+      display: inline-block;
+      margin: 24px 0 8px;
+      padding: 3px 12px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      color: var(--color-primary-deep);
+      background: var(--color-primary-soft);
+    }
+    .question-text {
+      font-size: 19px;
+      font-weight: 700;
+      line-height: 1.6;
+      margin-bottom: 18px;
+    }
+    .option-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .option-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      min-height: 54px; /* 保证移动端手指点击区域足够大 */
+      padding: 13px 15px;
+      text-align: left;
+      font-family: inherit;
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--color-text);
+      background: #fff;
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease, transform 0.12s ease;
+    }
+    .option-item:hover { border-color: #c9d8cb; }
+    .option-item:active { transform: scale(0.99); }
+    /* 选中态：浅绿底 + 绿色描边 */
+    .option-item.is-selected {
+      border-color: var(--color-primary);
+      background: var(--color-primary-soft);
+    }
+    .option-badge {
+      flex: 0 0 auto;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: #8b8578;
+      background: #f2ece3;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .option-item.is-selected .option-badge {
+      color: #fff;
+      background: var(--color-primary);
+    }
+    .option-text { flex: 1 1 auto; }
+    /* 未选择就点“下一题”的提示 */
+    .option-hint {
+      min-height: 22px;
+      margin-top: 14px;
+      font-size: 13.5px;
+      color: #c27a6b;
+      text-align: center;
+    }
+    .option-hint.is-shaking { animation: shake 0.4s ease; }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+    /* ---------- 答题页：上一题 / 下一题 ---------- */
+    .nav-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .nav-row .btn { flex: 1 1 0; }
+    /* ---------- 结果页 ---------- */
+    .result-card {
+      display: flex;
+      flex-direction: column;
+    }
+    .result-eyebrow {
+      text-align: center;
+      font-size: 13px;
+      letter-spacing: 0.12em;
+      color: var(--color-primary-deep);
+      margin-bottom: 14px;
+    }
+    .result-score {
+      align-self: center;
+      margin: 14px 0 4px;
+      padding: 5px 16px;
+      border-radius: 999px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--color-primary-deep);
+      background: var(--color-primary-soft);
+      font-variant-numeric: tabular-nums;
+    }
+    /* 动物身份卡片 */
+    .identity-card {
+      margin-top: 16px;
+      padding: 22px 18px;
+      border-radius: 18px;
+      text-align: center;
+      background: linear-gradient(150deg, #f3f7f2 0%, #fbf4f1 100%);
+    }
+    .identity-label {
+      font-size: 12.5px;
+      letter-spacing: 0.1em;
+      color: var(--color-text-muted);
+    }
+    .identity-emoji {
+      display: block;
+      font-size: 44px;
+      line-height: 1.3;
+      margin: 6px 0 2px;
+    }
+    .identity-name {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .identity-title {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 3px 14px;
+      border-radius: 999px;
+      font-size: 13px;
+      color: var(--color-primary-deep);
+      background: rgba(255, 255, 255, 0.75);
+    }
+    .identity-persona {
+      margin-top: 12px;
+      font-size: 14.5px;
+      color: #6b655c;
+      text-align: left;
+    }
+    /* 结果页三大解读模块 */
+    .result-module {
+      margin-top: 14px;
+      padding: 16px 18px;
+      border-radius: 16px;
+      background: #fffefb;
+      border: 1px solid var(--color-border);
+    }
+    .result-module h3 {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+    .result-module p {
+      font-size: 14.5px;
+      color: #6b655c;
+    }
+    #restartBtn { margin-top: 22px; }
+    /* ---------- 桌面端微调（手机样式在小屏天然成立） ---------- */
+    @media (min-width: 560px) {
+      body { padding: 48px 16px 56px; }
+      .card { padding: 36px 32px; }
+      .intro-title { font-size: 28px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <!-- ============================================================
+         页面一：首页介绍页
+         ============================================================ -->
+    <section id="page-intro" class="page page--active" aria-label="测试介绍页">
+      <div class="card intro-card">
+        <div class="intro-badge" aria-hidden="true">🐾</div>
+        <p class="intro-eyebrow">趣味社交人格测评</p>
+        <h1 class="intro-title">你的社交本能是什么动物？</h1>
+        <p class="intro-text">这是一场关于你社交本能的小测试。
+面对人际里细碎的信号、无声的氛围，你的内心会做出怎样本能选择？
+不用刻意思考对错，凭第一直觉选出答案，看看在社交世界里，你更像哪一种动物。</p>
+        <button id="startBtn" class="btn btn--primary btn--block" type="button">开始测试</button>
+        <p class="privacy-note">🔒 全程本地计算，不上传、不存储任何答题信息</p>
+        <p class="disclaimer">本测试仅为趣味社交娱乐参考，非专业心理评估，不具备心理诊断功效，结果仅作趣味解读，请勿过度解读。</p>
+      </div>
+    </section>
+    <!-- ============================================================
+         页面二：答题页（进度条 + 单选题目，内容由 JS 动态渲染）
+         ============================================================ -->
+    <section id="page-quiz" class="page" aria-label="答题页">
+      <div class="card">
+        <!-- 顶部进度区 -->
+        <div class="progress-head">
+          <span>社交本能测试</span>
+          <!-- 当前题 / 总题数，由 JS 实时更新 -->
+          <span class="progress-count" id="progressCount">1 / 16</span>
+        </div>
+        <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-label="答题进度">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <!-- 题干与选项渲染容器 -->
+        <div class="question--enter" id="questionWrap"></div>
+        <!-- 未选择选项时的温和提示 -->
+        <p class="option-hint" id="optionHint" hidden>请先选择一个选项，再进入下一题哦～</p>
+        <!-- 上一题 / 下一题（最后一题按钮文案自动变为“提交测试”） -->
+        <div class="nav-row">
+          <button id="prevBtn" class="btn btn--ghost" type="button" disabled>上一题</button>
+          <button id="nextBtn" class="btn btn--primary" type="button">下一题</button>
+        </div>
+      </div>
+    </section>
+    <!-- ============================================================
+         页面三：结果展示页（内容由 JS 根据总分填充）
+         ============================================================ -->
+    <section id="page-result" class="page" aria-label="结果展示页">
+      <div class="card result-card">
+        <p class="result-eyebrow">测 评 完 成</p>
+        <!-- 总分与区间 -->
+        <p class="result-score" id="resultScore"></p>
+        <!-- ② 动物身份卡片 -->
+        <div class="identity-card">
+          <span class="identity-label">动物身份卡片</span>
+          <span class="identity-emoji" id="resultEmoji"></span>
+          <h2 class="identity-name" id="resultName"></h2>
+          <span class="identity-title" id="resultTitle"></span>
+          <p class="identity-persona" id="resultPersona"></p>
+        </div>
+        <!-- ③ 你的社交本能 -->
+        <div class="result-module">
+          <h3>✨ 你的社交本能</h3>
+          <p id="resultInstinct"></p>
+        </div>
+        <!-- ④ 你的天赋闪光点 -->
+        <div class="result-module">
+          <h3>🌟 你的天赋闪光点</h3>
+          <p id="resultTalent"></p>
+        </div>
+        <!-- ⑤ 属于你的小提示 -->
+        <div class="result-module">
+          <h3>💡 属于你的小提示</h3>
+          <p id="resultTip"></p>
+        </div>
+        <!-- 重新测试：一键清空状态并回到首页 -->
+        <button id="restartBtn" class="btn btn--primary btn--block" type="button">🔄 重新测试</button>
+        <p class="disclaimer">本测试仅为趣味社交娱乐参考，非专业心理评估，结果仅作趣味解读，请勿过度解读。</p>
+      </div>
+    </section>
+  </main>
+  <!-- ============================================================
+       脚本区（JavaScript）
+       纯原生 JS，无任何外部依赖；
+       所有计分与结果匹配均在浏览器本地完成，无网络请求、不上传数据。
+       代码按「题库配置 → 结果配置 → 状态 → 渲染 → 交互 → 初始化」模块化组织。
+       ============================================================ -->
+  <script>
+    (function () {
+      'use strict';
+      /* ==========================================================
+         模块一：题库配置（共 16 题）
+         —— text：题干
+         —— options[].text：选项文案
+         —— options[].score：该选项的自定义分值（A/B/C/D 不固定）
+         二次修改提示：增删题目后，总题数与进度文案会自动适配。
+         ========================================================== */
+      var QUESTIONS = [
+        {
+          text: '一场多人聚会，热闹慢慢褪去，大家开始闲聊，你更倾向？',
+          options: [
+            { text: '找机会先行离开，享受独处', score: 1 },
+            { text: '留在原地，轻松随缘聊天', score: 2 },
+            { text: '默默观察所有人的神态与对话', score: 3 },
+            { text: '留意每个人情绪，主动照顾冷场的人', score: 4 }
+          ]
+        },
+        {
+          text: '聊天时对方回复简短冷淡，没有多余表情，你的第一念头？',
+          options: [
+            { text: '对方很忙，仅此而已', score: 2 },
+            { text: '可能今天心情一般', score: 1 },
+            { text: '猜想是不是刚刚那句话不合适', score: 4 },
+            { text: '反复回想，担心自己惹对方不快', score: 3 }
+          ]
+        },
+        {
+          text: '朋友随口提出一件需要你牺牲时间的请求，你第一反应？',
+          options: [
+            { text: '不合适就直接婉拒', score: 1 },
+            { text: '看我当下时间，酌情答应', score: 3 },
+            { text: '不好意思拒绝，勉强应允', score: 2 },
+            { text: '即便很累，也不想让对方失望', score: 4 }
+          ]
+        },
+        {
+          text: '在群聊里，你发了一段话，却没有人接话，你会？',
+          options: [
+            { text: '无所谓，跳过就好', score: 2 },
+            { text: '稍微尴尬，转而做别的事', score: 1 },
+            { text: '猜测是不是话题不合大家心意', score: 4 },
+            { text: '怀疑自己说了不该说的话', score: 3 }
+          ]
+        },
+        {
+          text: '别人一句无心评价落在耳边，你通常？',
+          options: [
+            { text: '听过就放下，不放在心上', score: 1 },
+            { text: '简单留意，不会反复回想', score: 3 },
+            { text: '反复琢磨这句话背后的意思', score: 2 },
+            { text: '忍不住怀疑是自己本身有问题', score: 4 }
+          ]
+        },
+        {
+          text: '结束一场长时间社交，回家之后你的状态是？',
+          options: [
+            { text: '一身轻松，自在舒服', score: 2 },
+            { text: '略有疲惫，休息一会就能恢复', score: 1 },
+            { text: '脑海回放刚刚对话的细节', score: 4 },
+            { text: '身心耗尽，反复复盘有没有失礼', score: 3 }
+          ]
+        },
+        {
+          text: '身边人情绪低落沉默，你本能的反应？',
+          options: [
+            { text: '尊重对方，不去过度介入', score: 1 },
+            { text: '简单关心，对方不想说就不追问', score: 3 },
+            { text: '猜想是不是自己哪里做错了', score: 2 },
+            { text: '主动安抚，主动扛住气氛，生怕对方难过', score: 4 }
+          ]
+        },
+        {
+          text: '当察觉到别人眼神、语气有微妙变化时，你？',
+          options: [
+            { text: '很难捕捉这类细微变化', score: 2 },
+            { text: '偶尔察觉，但不会多想', score: 1 },
+            { text: '可以敏锐捕捉，在心里悄悄掂量', score: 4 },
+            { text: '一点变化就紧张，不断揣测对方想法', score: 3 }
+          ]
+        },
+        {
+          text: '一群人讨论事情，你的想法和大家不一样，你会？',
+          options: [
+            { text: '直接说出自己观点', score: 1 },
+            { text: '在合适时机温和表达想法', score: 2 },
+            { text: '犹豫很久，选择保留意见', score: 4 },
+            { text: '干脆顺着大家想法，避免冲突', score: 3 }
+          ]
+        },
+        {
+          text: '和别人产生小小的误会，没有激烈争吵，你的内心？',
+          options: [
+            { text: '事情过去就不再纠结', score: 2 },
+            { text: '简单沟通解开，然后翻篇', score: 1 },
+            { text: '心里悬着，反复回想对话', score: 3 },
+            { text: '哪怕不是你的错，也主动缓和气氛', score: 4 }
+          ]
+        },
+        {
+          text: '为融入圈子，你会不会不自觉调整说话方式？',
+          options: [
+            { text: '基本不会，保持原本的样子', score: 1 },
+            { text: '少数场合会稍微收敛', score: 3 },
+            { text: '常常下意识迁就大家风格', score: 2 },
+            { text: '习惯性伪装，迎合他人喜好', score: 4 }
+          ]
+        },
+        {
+          text: '有人对你表达失望，你的感受是？',
+          options: [
+            { text: '每个人期待不同，不必强求', score: 2 },
+            { text: '有点遗憾，但不会自我否定', score: 1 },
+            { text: '心里愧疚很久', score: 4 },
+            { text: '非常不安，急于挽回对方好感', score: 3 }
+          ]
+        },
+        {
+          text: '与人交谈，你更在意？',
+          options: [
+            { text: '表达自己真实想法', score: 1 },
+            { text: '双向轻松的交流', score: 2 },
+            { text: '捕捉对方情绪，判断对方感受', score: 3 },
+            { text: '优先保证对方舒服，忽略自己感受', score: 4 }
+          ]
+        },
+        {
+          text: '一段关系慢慢变淡，没有争吵，你会？',
+          options: [
+            { text: '接受人与人聚散无常', score: 2 },
+            { text: '感到遗憾，但顺其自然', score: 1 },
+            { text: '不断回想，寻找关系变淡的原因', score: 4 },
+            { text: '想方设法挽回，害怕失去这段关系', score: 3 }
+          ]
+        },
+        {
+          text: '当别人向你倾诉负面情绪，你通常？',
+          options: [
+            { text: '适当倾听，守住自己边界', score: 1 },
+            { text: '耐心倾听，但不会跟着内耗', score: 3 },
+            { text: '共情很深，把对方情绪带入心里', score: 2 },
+            { text: '全盘承接对方情绪，独自消化', score: 4 }
+          ]
+        },
+        {
+          text: '社交过程中，你最害怕？',
+          options: [
+            { text: '被束缚，失去自我', score: 2 },
+            { text: '无趣尴尬的场面', score: 1 },
+            { text: '无意间冒犯别人而不自知', score: 3 },
+            { text: '被别人讨厌', score: 4 }
+          ]
+        }
+      ];
+      /* ==========================================================
+         模块二：结果配置（共 12 种动物，按总分区间从低到高排列）
+         —— min / max：总分闭区间
+         —— image 字段保留仅作兼容，页面不再渲染图片
+         —— emoji / name / title：身份卡片图标、动物名、一句话人设头衔
+         —— persona：身份卡片下的一句话人设
+         —— instinct / talent / tip：三大解读模块文案
+         ========================================================== */
+      var RESULTS = [
+        {
+          min: 16, max: 19,
+          image: '',
+          emoji: '🦅',
+          name: '高山雄鹰',
+          title: '旷野的俯瞰者',
+          persona: '你是社交里的高山雄鹰，习惯站在高处静观人际百态，不轻易卷入情绪漩涡。',
+          instinct: '你拥有非常稳固的内在世界，外界的评价、他人的情绪起伏很难动摇你的自我认知。在人群中你可以参与交谈，但不会渴求所有人的认可。你天然分得清：别人的态度是对方的课题，不是你的责任。面对冲突与非议，你不容易陷入自我怀疑，不会为了融入圈子而削去自身棱角。你偏爱精神上的自由，不喜欢被复杂人情捆绑，社交对你来说是选择，不是义务。',
+          talent: '内心内核稳定，边界感强大，不容易被他人PUA或情绪绑架；看人有大局观，不容易被细碎的言语内耗；待人坦荡，不刻意讨好，吸引来的朋友大多是互相尊重的关系。',
+          tip: '你的钝感是强大铠甲，但偶尔可以放下俯瞰视角，落地倾听身边人的细微情绪。适度共情，并不会夺走你的自由，反而会让珍贵的关系多一份温度。'
+        },
+        {
+          min: 20, max: 24,
+          image: '',
+          emoji: '🐺',
+          name: '荒漠孤狼',
+          title: '独行的同行者',
+          persona: '荒漠孤狼，不热衷喧闹人海，只看重少数深度、真诚的联结。',
+          instinct: '你不排斥社交，但反感无意义的扎堆寒暄。比起一大堆泛泛之交，你更愿意花精力维系少数知己。你可以和别人合作同行，但始终保留独处的空间。遇到矛盾时，你习惯冷静思考，不会为了维持表面和平勉强自己。你内心独立，习惯自己消化情绪，很少主动向外倾诉脆弱，常常给人一种清冷克制的印象。',
+          talent: '交友重质不重量，对待真心的伙伴极度忠诚；情绪自持，不容易被浅层人情消耗；判断力清醒，能快速分辨一段关系是否值得投入。',
+          tip: '不必认定展露脆弱就是软弱。信任的人面前适度卸下防备，并不会削弱你的力量，反而能让亲密关系更加牢固。'
+        },
+        {
+          min: 25, max: 29,
+          image: '',
+          emoji: '🕊️',
+          name: '海边海鸟',
+          title: '来去自由的过客',
+          persona: '海边海鸟，享受短暂轻盈的相遇，坦然接纳人与人之间的聚散。',
+          instinct: '你擅长轻松的浅社交，可以快速融入热闹的场合，谈笑自如，但不会执着绑定一段关系。你来去从容，一段关系变淡，你很少苦苦追问原因，默认离别是常态。你不喜欢沉重压抑的人际关系，一旦感受到关系带来压力，会悄悄后退抽身。社交对你来说是一场海边短暂停留，好看但不必久留。',
+          talent: '松弛感拉满，和你相处没有压力；适应力强，在不同圈子都能轻松融入；不会对他人抱有过高期待，很少因为关系落空受伤。',
+          tip: '短暂相遇固然美好，如果遇到同频合拍的人，可以试着多停留片刻，深度羁绊会带来不一样的温暖体验。'
+        },
+        {
+          min: 30, max: 34,
+          image: '',
+          emoji: '🦌',
+          name: '林间小鹿',
+          title: '温柔的感知者',
+          persona: '林间小鹿，感知力恰到好处，能体察氛围，却不会无限透支自己。',
+          instinct: '你心思细腻，能敏锐捕捉现场氛围变化，懂得照顾他人感受。你愿意靠近人群，乐于共情身边人，但拥有天然的“电量底线”。社交消耗之后，你懂得退回安静的林间休养，不会硬撑。遇到误会时你习惯包容，很多情绪会悄悄放在心里，不愿意给别人添麻烦。你待人温和，很少主动挑起冲突，是群体里让人安心的存在。',
+          talent: '共情力适度，进退有度；性格温润，擅长营造舒服的相处氛围；懂得换位思考，贵人缘很好。',
+          tip: '不必独自吞下所有委屈。你的感受同样重要，不舒服的情绪完全可以大方表达，不必一直做懂事的人。'
+        },
+        {
+          min: 35, max: 39,
+          image: '',
+          emoji: '🦝',
+          name: '浣熊',
+          title: '好奇的观察者',
+          persona: '浣熊，带着好奇心观察人际细节，灵活适应不同社交场景。',
+          instinct: '你天生喜欢观察人与人之间微妙的氛围变化，擅长捕捉对话里隐藏的潜台词。情商灵活，懂得审时度势，在不同圈子可以切换合适的姿态。你乐于调节气氛，擅长化解尴尬。但在社交结束之后，你会不自觉复盘刚刚发生的对话，反复琢磨别人话语背后的含义，偶尔陷入细碎思虑。',
+          talent: '观察力出众，环境适应力强；头脑灵活，擅长处理社交里的小尴尬；懂得换位思考，很会照顾场面。',
+          tip: '不用反复复盘每一句话。人与人的交流本就留有模糊空间，允许一些对话不必深究，能减少很多不必要的思虑。'
+        },
+        {
+          min: 40, max: 43,
+          image: '',
+          emoji: '🦊',
+          name: '丛林灵狐',
+          title: '言外之意的读懂者',
+          persona: '丛林灵狐，洞察力极强，总能捕捉别人藏在言语背后的情绪。',
+          instinct: '你拥有远超常人的情绪感知力，别人没有说出口的情绪、微妙的语气变化，你一眼就能察觉。你很擅长读懂言外之意，能快速感知气氛的微妙转向。这份敏锐是你的天赋，但也带来副作用：独处时，脑海会不断回放对话细节，反复揣测对方想法，悄悄陷入内耗。你很容易把别人冷淡的态度，默认和自己有关。',
+          talent: '洞察力出众，善解人意，是绝佳倾听者；能读懂他人未说出口的心事，朋友愿意向你倾诉心事。',
+          tip: '很多冷淡、沉默，只是对方自身状态不佳，未必是针对你。试着减少过度归因，你的思绪会轻松很多。'
+        },
+        {
+          min: 44, max: 47,
+          image: '',
+          emoji: '🐦',
+          name: '喜鹊',
+          title: '氛围守护者',
+          persona: '喜鹊，天生温暖，习惯主动维系群体和睦，乐于传递好心情。',
+          instinct: '你很在意圈子氛围是否融洽，一旦现场气氛冷清，你会下意识主动调节。你擅长发现别人身上的闪光点，乐于赞美他人。看到身边人低落，你会本能想去安抚、哄对方开心。久而久之，你会下意识把“维持气氛”当成自己的责任，一旦氛围变差，会不自觉归责于自己。',
+          talent: '性格温暖讨喜，擅长活跃气氛；善于发现他人优点，和你相处会被肯定；擅长维系长期稳定的人际关系。',
+          tip: '维持热闹和睦不是你的义务。冷场是很正常的事，不必把所有气氛压力都扛在自己身上。'
+        },
+        {
+          min: 48, max: 51,
+          image: '',
+          emoji: '🐿️',
+          name: '松鼠',
+          title: '谨慎的预判者',
+          persona: '松鼠，心思细腻，习惯提前预判社交风险，细心记住所有人的喜好。',
+          instinct: '你在社交中自带谨慎属性，会提前设想对话可能出现的矛盾，害怕无意间冒犯、得罪别人。你细心记住身边人的喜好、禁忌，希望每一次互动都不出差错。结束聊天之后，你会反复掂量自己刚刚的言行，担心哪句话说得不妥。你习惯提前预设最坏情况，以此保护自己，很容易被微小的负面信号牵动情绪。',
+          talent: '体贴细心，记忆力强，能记住别人的小偏好；待人周到，很少做出冒犯他人的举动。',
+          tip: '不用提前预设最坏结果。大部分人不会时刻评判你，适度放下防备，社交会轻松不少。'
+        },
+        {
+          min: 52, max: 55,
+          image: '',
+          emoji: '🐇',
+          name: '林间白兔',
+          title: '敏感的共情者',
+          persona: '林间白兔，感官敏锐，对周遭所有风吹草动都十分敏感。',
+          instinct: '你对环境里的情绪信号感知极强，身边人的不悦、沉默，你第一时间就能捕捉到。你习惯优先照顾别人感受，害怕冲突，下意识迁就周围人的需求。很容易承接别人传递过来的负面情绪，把他人烦恼揽到自己心里。一点点负面反馈，就会在心里反复发酵，常常社交结束之后身心疲惫。',
+          talent: '温柔包容，体贴细心，很容易让人产生信赖感；共情力强，总能感知到别人不易察觉的难处。',
+          tip: '你的善意非常珍贵，但不必时刻紧绷神经。学会给自己设立情绪安全空间，懂得拒绝，不是伤害别人。'
+        },
+        {
+          min: 56, max: 59,
+          image: '',
+          emoji: '🦨',
+          name: '雪貂',
+          title: '情绪同频者',
+          persona: '雪貂，共情力几乎同步，别人的情绪会快速传递到你的内心。',
+          instinct: '你拥有高度共情能力，仿佛可以直接感受对方的喜怒哀乐。身边人低落，你也会跟着感到压抑；别人失望，你会产生强烈的愧疚感。你很害怕让别人失望，常常为照顾对方感受委屈自己。你很难区分：哪些情绪属于对方，哪些情绪是你自己的，容易持续吸收周围人的负面情绪，造成情绪透支。',
+          talent: '共情力极强，能深度理解他人痛苦；耐心温柔，是身边人最依赖的情绪树洞。',
+          tip: '学会区分：别人的情绪，不等于你的责任。不必全盘承接所有人的负面感受，学会给自己建立情绪隔离。'
+        },
+        {
+          min: 60, max: 62,
+          image: '',
+          emoji: '🦋',
+          name: '蝴蝶',
+          title: '渴求认可的温柔者',
+          persona: '蝴蝶，十分在意他人眼光，害怕被讨厌，下意识调整自己迎合期待。',
+          instinct: '你非常在意别人对你的评价，内心深处希望被所有人接纳、喜欢。你会下意识观察别人喜好，悄悄调整说话方式、态度，以此适配对方期待。在关系里，你小心翼翼，害怕产生矛盾，一旦感受到对方的疏远，就会紧张不安，努力寻找办法挽回好感。你习惯展示讨人喜欢的一面，很少展露真实、不完美的自己。',
+          talent: '柔软体贴，善于感知氛围；懂得照顾他人感受，很容易让人产生好感。',
+          tip: '不必一直伪装成别人喜欢的样子。真实、有缺点的你，一样值得被人接纳与喜爱。'
+        },
+        {
+          min: 63, max: 64,
+          image: '',
+          emoji: '✨',
+          name: '萤火虫',
+          title: '默默发光的奉献者',
+          persona: '萤火虫，习惯把微光留给他人，把疲惫独自藏在暗处。',
+          instinct: '你总是优先照顾身边人的情绪，习惯性牺牲自己的感受去成全别人。人际里一点点负面信号，都会被你捕捉并反复思考。你害怕冲突、害怕别人难过，习惯主动妥协、安抚他人。你习惯默默付出，很少主动表达自己的疲惫，常常独自消化所有委屈，长期处于持续的情绪内耗当中。',
+          talent: '温柔善良，愿意无私付出；敏锐体贴，总能第一时间察觉别人的难处。',
+          tip: '记得给自己留一点光亮。不必永远做那个照亮别人的人，你的疲惫和需求，同样值得被看见。'
+        }
+      ];
+      /* ==========================================================
+         模块三：全局状态
+         —— currentIndex：当前题目索引（从 0 开始）
+         —— selected：每题选中的选项索引；null 表示该题未作答
+         ========================================================== */
+      var TOTAL_QUESTIONS = QUESTIONS.length;
+      var OPTION_LABELS = ['A', 'B', 'C', 'D']; // 选项角标，按位置自动生成
+      var answerState = {
+        currentIndex: 0,
+        selected: new Array(TOTAL_QUESTIONS).fill(null)
+      };
+      /* ==========================================================
+         模块四：DOM 元素缓存
+         ========================================================== */
+      function $(id) { return document.getElementById(id); }
+      var pageIntro = $('page-intro');
+      var pageQuiz = $('page-quiz');
+      var pageResult = $('page-result');
+      var startBtn = $('startBtn');
+      var restartBtn = $('restartBtn');
+      var prevBtn = $('prevBtn');
+      var nextBtn = $('nextBtn');
+      var progressCount = $('progressCount');
+      var progressFill = $('progressFill');
+      var questionWrap = $('questionWrap');
+      var optionHint = $('optionHint');
+      var resultScore = $('resultScore');
+      var resultEmoji = $('resultEmoji');
+      var resultName = $('resultName');
+      var resultTitle = $('resultTitle');
+      var resultPersona = $('resultPersona');
+      var resultInstinct = $('resultInstinct');
+      var resultTalent = $('resultTalent');
+      var resultTip = $('resultTip');
+      /* ==========================================================
+         模块五：通用工具函数
+         ========================================================== */
+      /** 切换三个页面：隐藏全部，仅显示指定页面 */
+      function showPage(targetPage) {
+        [pageIntro, pageQuiz, pageResult].forEach(function (page) {
+          page.classList.toggle('page--active', page === targetPage);
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      /** 实时累加总分：根据每题已选选项的 score 求和（未作答记 0） */
+      function getTotalScore() {
+        return answerState.selected.reduce(function (sum, optionIndex, questionIndex) {
+          if (optionIndex === null) return sum;
+          return sum + QUESTIONS[questionIndex].options[optionIndex].score;
+        }, 0);
+      }
+      /** 按总分匹配对应动物结果（落在哪个闭区间就返回哪条配置） */
+      function matchResult(score) {
+        return RESULTS.find(function (item) {
+          return score >= item.min && score <= item.max;
+        });
+      }
+      /** 显示“请先选择”提示并播放一次抖动动画 */
+      var hintTimer = null;
+      function showHint() {
+        optionHint.hidden = false;
+        optionHint.classList.remove('is-shaking');
+        // 强制重排后重新挂载动画类，实现可重复触发
+        void optionHint.offsetWidth;
+        optionHint.classList.add('is-shaking');
+        clearTimeout(hintTimer);
+        hintTimer = setTimeout(function () { optionHint.classList.remove('is-shaking'); }, 450);
+      }
+      function hideHint() {
+        optionHint.hidden = true;
+        optionHint.classList.remove('is-shaking');
+      }
+      /** 更新进度文字与进度条（按“已作答题数”计算进度） */
+      function updateProgress() {
+        var answeredCount = answerState.selected.filter(function (v) { return v !== null; }).length;
+        progressCount.textContent = (answerState.currentIndex + 1) + ' / ' + TOTAL_QUESTIONS;
+        progressFill.style.width = (answeredCount / TOTAL_QUESTIONS * 100) + '%';
+      }
+      /* ==========================================================
+         模块六：答题页渲染与交互
+         ========================================================== */
+      /** 渲染当前题目：题干 + 四个选项，并恢复已选状态 */
+      function renderQuestion() {
+        var question = QUESTIONS[answerState.currentIndex];
+        var selectedIndex = answerState.selected[answerState.currentIndex];
+        // 题干区
+        questionWrap.innerHTML =
+          '<p class="question-no">第 ' + (answerState.currentIndex + 1) + ' 题</p>' +
+          '<h2 class="question-text"></h2>' +
+          '<div class="option-list" role="radiogroup" aria-label="选项列表"></div>';
+        questionWrap.querySelector('.question-text').textContent = question.text;
+        // 选项列表（用 textContent 写入文案，避免特殊字符引发问题）
+        var optionList = questionWrap.querySelector('.option-list');
+        question.options.forEach(function (option, index) {
+          var isSelected = selectedIndex === index;
+          var button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'option-item' + (isSelected ? ' is-selected' : '');
+          button.dataset.optionIndex = String(index);
+          button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+          var badge = document.createElement('span');
+          badge.className = 'option-badge';
+          badge.textContent = OPTION_LABELS[index];
+          var text = document.createElement('span');
+          text.className = 'option-text';
+          text.textContent = option.text;
+          button.appendChild(badge);
+          button.appendChild(text);
+          optionList.appendChild(button);
+        });
+        // 进度 / 按钮状态 / 按钮文案
+        updateProgress();
+        prevBtn.disabled = answerState.currentIndex === 0;
+        var isLastQuestion = answerState.currentIndex === TOTAL_QUESTIONS - 1;
+        nextBtn.textContent = isLastQuestion ? '提交测试' : '下一题';
+        hideHint();
+        // 重播题目切换动画
+        questionWrap.classList.remove('question--enter');
+        void questionWrap.offsetWidth;
+        questionWrap.classList.add('question--enter');
+      }
+      /** 选择某个选项：写入状态（分数即随之自动累加）并刷新选中样式 */
+      function selectOption(optionIndex) {
+        answerState.selected[answerState.currentIndex] = optionIndex;
+        questionWrap.querySelectorAll('.option-item').forEach(function (button, index) {
+          var isSelected = index === optionIndex;
+          button.classList.toggle('is-selected', isSelected);
+          button.setAttribute('aria-pressed', isSelected ? 'true' : 'false');
+        });
+        updateProgress();
+        hideHint();
+      }
+      /** 下一题 / 提交：必须先选择才能继续；最后一题执行提交 */
+      function handleNext() {
+        if (answerState.selected[answerState.currentIndex] === null) {
+          showHint();
+          return;
+        }
+        if (answerState.currentIndex === TOTAL_QUESTIONS - 1) {
+          submitQuiz();
+        } else {
+          answerState.currentIndex += 1;
+          renderQuestion();
+        }
+      }
+      /** 上一题：回退索引，已选答案原样保留并可修改 */
+      function handlePrev() {
+        if (answerState.currentIndex === 0) return;
+        answerState.currentIndex -= 1;
+        renderQuestion();
+      }
+      /* ==========================================================
+         模块七：提交与结果页渲染
+         ========================================================== */
+      /** 提交：本地计算总分 → 匹配动物 → 渲染结果页 */
+      function submitQuiz() {
+        var score = getTotalScore();
+        var result = matchResult(score) || RESULTS[RESULTS.length - 1]; // 兜底，理论上不会命中
+        renderResult(result, score);
+        showPage(pageResult);
+      }
+      /** 把匹配到的结果数据填充进结果页 */
+      function renderResult(result, score) {
+        // 总分与对应区间
+        resultScore.textContent = '你的得分：' + score + ' 分 · 区间 ' + result.min + '–' + result.max + ' 分';
+        // ② 身份卡片
+        resultEmoji.textContent = result.emoji;
+        resultName.textContent = result.name;
+        resultTitle.textContent = result.name + '｜' + result.title;
+        resultPersona.textContent = result.persona;
+        // ③④⑤ 三大解读模块
+        resultInstinct.textContent = result.instinct;
+        resultTalent.textContent = result.talent;
+        resultTip.textContent = result.tip;
+      }
+      /* ==========================================================
+         模块八：重新测试（清空全部状态，回到首页）
+         ========================================================== */
+      function restartQuiz() {
+        answerState.currentIndex = 0;
+        answerState.selected = new Array(TOTAL_QUESTIONS).fill(null);
+        renderQuestion();
+        showPage(pageIntro);
+      }
+      /* ==========================================================
+         模块九：事件绑定与初始化
+         ========================================================== */
+      function init() {
+        // 首页 / 结果页按钮
+        startBtn.addEventListener('click', function () {
+          renderQuestion();
+          showPage(pageQuiz);
+        });
+        restartBtn.addEventListener('click', restartQuiz);
+        // 答题页导航
+        nextBtn.addEventListener('click', handleNext);
+        prevBtn.addEventListener('click', handlePrev);
+        // 选项点击采用事件委托：点击后写入答案
+        questionWrap.addEventListener('click', function (event) {
+          var optionButton = event.target.closest('.option-item');
+          if (!optionButton) return;
+          selectOption(Number(optionButton.dataset.optionIndex));
+        });
+        // 预先渲染第一题，保证进度文案与题库同源
+        renderQuestion();
+      }
+      init();
+    })();
+  </script>
+</body>
+</html>
